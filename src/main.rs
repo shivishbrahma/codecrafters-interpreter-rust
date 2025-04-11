@@ -35,7 +35,7 @@ fn lexical_parse(input: String) -> ExitCode {
     });
 
     println!("{}", lexical_errors.trim());
-    println!("{}", lexical_out.trim());
+    eprintln!("{}", lexical_out.trim());
 
     if lexical_errors.len() > 0 {
         ExitCode::from(65)
