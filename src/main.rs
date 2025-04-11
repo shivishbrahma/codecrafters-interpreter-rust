@@ -17,6 +17,7 @@ fn lexical_parse(input: String) -> ExitCode {
     token_map.insert('*', "STAR");
     token_map.insert('.', "DOT");
     token_map.insert('=', "EQUAL");
+    token_map.insert('!', "BANG");
 
     // let mut lexical_out: String = String::new();
     // let mut lexical_errors: String = String::new();
@@ -26,32 +27,42 @@ fn lexical_parse(input: String) -> ExitCode {
     let mut chars = input.chars().peekable();
 
     while let Some(c) = chars.next() {
-        if c == '=' {
-            match chars.peek() {
-                Some('=') => {
-                    println!("{} {} null", "EQUAL_EQUAL", "==");
-                    chars.next();
-                }
-                _ => {
-                    println!("{} {} null", token_map.get(&c).unwrap(), c);
+        match c {
+            '=' => {
+                print!("{}", token_map.get(&c).unwrap());
+                match chars.peek() {
+                    Some('=') => {
+                        println!("_{} {} null", token_map.get(&'=').unwrap(), "==");
+                        chars.next();
+                    }
+                    _ => {
+                        println!(" {} null", c);
+                    }
                 }
             }
-        } else if let Some(token) = token_map.get(&c) {
-            println!("{} {} null", token, c);
-        } else if c == '\n' {
-            line_counter += 1;
-        } else {
-            flag = true;
-            eprintln!("[line {}] Error: Unexpected character: {}", line_counter, c);
+            '!' => {
+                print!("{}", token_map.get(&c).unwrap());
+                match chars.peek() {
+                    Some('=') => {
+                        println!("_{} {} null", token_map.get(&'=').unwrap(), "!=");
+                        chars.next();
+                    }
+                    _ => {
+                        println!(" {} null", c);
+                    }
+                }
+            }
+            '\n' => line_counter += 1,
+            _ => {
+                if let Some(token) = token_map.get(&c) {
+                    println!("{} {} null", token, c);
+                } else {
+                    flag = true;
+                    eprintln!("[line {}] Error: Unexpected character: {}", line_counter, c);
+                }
+            }
         }
     }
-
-    // if lexical_errors.trim().len() > 0 {
-    //     eprintln!("{}", lexical_errors.trim());
-    // }
-    // if lexical_out.trim().len() > 0 {
-    //     println!("{}", lexical_out.trim());
-    // }
 
     if flag {
         ExitCode::from(65)
