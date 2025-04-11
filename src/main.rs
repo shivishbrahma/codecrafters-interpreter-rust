@@ -18,9 +18,8 @@ fn lexical_parse(input: String) -> ExitCode {
     token_map.insert('.', "DOT");
     token_map.insert('=', "EQUAL");
     token_map.insert('!', "BANG");
-
-    // let mut lexical_out: String = String::new();
-    // let mut lexical_errors: String = String::new();
+    token_map.insert('>', "GREATER");
+    token_map.insert('<', "LESS");
 
     let mut line_counter: isize = 1;
     let mut flag = false;
@@ -32,7 +31,7 @@ fn lexical_parse(input: String) -> ExitCode {
                 print!("{}", token_map.get(&c).unwrap());
                 match chars.peek() {
                     Some('=') => {
-                        println!("_{} {} null", token_map.get(&'=').unwrap(), "==");
+                        println!("_{} {}{} null", token_map.get(&'=').unwrap(), c, "=");
                         chars.next();
                     }
                     _ => {
@@ -44,7 +43,31 @@ fn lexical_parse(input: String) -> ExitCode {
                 print!("{}", token_map.get(&c).unwrap());
                 match chars.peek() {
                     Some('=') => {
-                        println!("_{} {} null", token_map.get(&'=').unwrap(), "!=");
+                        println!("_{} {}{} null", token_map.get(&'=').unwrap(), c, "=");
+                        chars.next();
+                    }
+                    _ => {
+                        println!(" {} null", c);
+                    }
+                }
+            }
+            '>' => {
+                print!("{}", token_map.get(&c).unwrap());
+                match chars.peek() {
+                    Some('=') => {
+                        println!("_{} {}{} null", token_map.get(&'=').unwrap(), c, "=");
+                        chars.next();
+                    }
+                    _ => {
+                        println!(" {} null", c);
+                    }
+                }
+            }
+            '<' => {
+                print!("{}", token_map.get(&c).unwrap());
+                match chars.peek() {
+                    Some('=') => {
+                        println!("_{} {}{} null", token_map.get(&'=').unwrap(), c, "=");
                         chars.next();
                     }
                     _ => {
