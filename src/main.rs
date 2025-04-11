@@ -34,8 +34,12 @@ fn lexical_parse(input: String) -> ExitCode {
         }
     });
 
-    println!("{}", lexical_errors.trim());
-    eprintln!("{}", lexical_out.trim());
+    if lexical_errors.trim().len() > 0 {
+        eprintln!("{}", lexical_errors.trim());
+    }
+    if lexical_out.trim().len() > 0 {
+        println!("{}", lexical_out.trim());
+    }
 
     if lexical_errors.len() > 0 {
         ExitCode::from(65)
@@ -65,10 +69,10 @@ fn main() -> ExitCode {
             if !file_contents.is_empty() {
                 s = lexical_parse(file_contents);
             }
+            println!("EOF  null");
             if s != ExitCode::SUCCESS {
                 return s;
             }
-            println!("EOF  null");
         }
         _ => {
             writeln!(io::stderr(), "Unknown command: {}", command).unwrap();
