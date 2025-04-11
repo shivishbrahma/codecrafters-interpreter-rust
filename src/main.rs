@@ -22,25 +22,52 @@ fn lexical_parse(input: String) -> ExitCode {
     token_map.insert('<', "LESS");
     token_map.insert('/', "SLASH");
 
+    let mut chars = input.chars().peekable();
+    let mut literal = String::new();
     let mut line_counter: isize = 1;
     let mut has_lexical_error = false;
     let mut is_line_comment = false;
-    let mut chars = input.chars().peekable();
+    let mut is_string = false;
 
     while let Some(c) = chars.next() {
-        if is_line_comment {
-            if c == '\n' {
+        if c == '\n' {
+            // Checking unterminate string error at new line
+            if is_string {
+                eprintln!("[line {}] Error: Unterminated string.", line_counter);
+                has_lexical_error = true;
+                is_string = false;
+            }
+
+            line_counter += 1;
+            // Skipping till next line
+            if is_line_comment {
                 is_line_comment = false;
-                line_counter += 1;
+                continue;
+            }
+        }
+
+        // Skipping commented character
+        if is_line_comment {
+            continue;
+        }
+
+        // Handling string literal
+        if is_string {
+            if c == '"' {
+                is_string = false;
+                println!("STRING \"{}\" {}", literal, literal);
+                literal = String::new();
+            } else {
+                literal.push(c);
             }
             continue;
         }
 
         match c {
-            '\n' => {
-                line_counter += 1;
+            '"' => {
+                is_string = true;
             }
-            '\t' | '\r' | ' ' => {}
+            '\t' | '\r' | ' ' | '\n' => {}
             '=' => {
                 print!("{}", token_map.get(&c).unwrap());
                 match chars.peek() {
@@ -92,6 +119,7 @@ fn lexical_parse(input: String) -> ExitCode {
             '/' => match chars.peek() {
                 Some('/') => {
                     is_line_comment = true;
+                    chars.next();
                 }
                 _ => {
                     println!("{} {} null", token_map.get(&c).unwrap(), c);
@@ -106,6 +134,12 @@ fn lexical_parse(input: String) -> ExitCode {
                 }
             }
         }
+    }
+
+    // Checking unterminate string error at EOF
+    if is_string {
+        eprintln!("[line {}] Error: Unterminated string.", line_counter);
+        has_lexical_error = true;
     }
 
     if has_lexical_error {
