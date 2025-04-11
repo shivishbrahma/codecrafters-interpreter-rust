@@ -28,16 +28,16 @@ fn lexical_parse(input: String) -> ExitCode {
     let mut chars = input.chars().peekable();
 
     while let Some(c) = chars.next() {
-        if c == '\n' {
-            line_counter += 1;
-            is_line_comment = false;
-        }
-
         if is_line_comment {
             continue;
         }
 
         match c {
+            '\n' => {
+                line_counter += 1;
+                is_line_comment = false;
+            }
+            '\t' | '\r' | ' ' => {}
             '=' => {
                 print!("{}", token_map.get(&c).unwrap());
                 match chars.peek() {
