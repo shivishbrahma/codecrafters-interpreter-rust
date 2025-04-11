@@ -20,10 +20,13 @@ fn main() {
             });
 
             if !file_contents.is_empty() {
-                panic!("Scanner not implemented");
-            } else {
-                println!("EOF  null"); // Placeholder, remove this line when implementing the scanner
+                file_contents.chars().for_each(|c| match c {
+                    '(' => println!("LEFT_PAREN {} null", c),
+                    ')' => println!("RIGHT_PAREN {} null", c),
+                    _ => (),
+                });
             }
+            println!("EOF  null");
         }
         _ => {
             writeln!(io::stderr(), "Unknown command: {}", command).unwrap();
