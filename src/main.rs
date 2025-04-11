@@ -16,32 +16,44 @@ fn lexical_parse(input: String) -> ExitCode {
     token_map.insert('-', "MINUS");
     token_map.insert('*', "STAR");
     token_map.insert('.', "DOT");
+    token_map.insert('=', "EQUAL");
 
-    let mut lexical_out: String = String::new();
-    let mut lexical_errors: String = String::new();
+    // let mut lexical_out: String = String::new();
+    // let mut lexical_errors: String = String::new();
 
-    let mut line_counter: i32 = 1;
-    input.chars().for_each(|c| {
-        if let Some(token) = token_map.get(&c) {
-            lexical_out += &format!("\n{} {} null", token, c);
+    let mut line_counter: isize = 1;
+    let mut flag = false;
+    let mut chars = input.chars().peekable();
+
+    while let Some(c) = chars.next() {
+        if c == '=' {
+            match chars.peek() {
+                Some('=') => {
+                    println!("{} {} null", "EQUAL_EQUAL", "==");
+                    chars.next();
+                }
+                _ => {
+                    println!("{} {} null", token_map.get(&c).unwrap(), c);
+                }
+            }
+        } else if let Some(token) = token_map.get(&c) {
+            println!("{} {} null", token, c);
         } else if c == '\n' {
             line_counter += 1;
         } else {
-            lexical_errors += &format!(
-                "\n[line {}] Error: Unexpected character: {}",
-                line_counter, c
-            );
+            flag = true;
+            eprintln!("[line {}] Error: Unexpected character: {}", line_counter, c);
         }
-    });
-
-    if lexical_errors.trim().len() > 0 {
-        eprintln!("{}", lexical_errors.trim());
-    }
-    if lexical_out.trim().len() > 0 {
-        println!("{}", lexical_out.trim());
     }
 
-    if lexical_errors.len() > 0 {
+    // if lexical_errors.trim().len() > 0 {
+    //     eprintln!("{}", lexical_errors.trim());
+    // }
+    // if lexical_out.trim().len() > 0 {
+    //     println!("{}", lexical_out.trim());
+    // }
+
+    if flag {
         ExitCode::from(65)
     } else {
         ExitCode::SUCCESS
