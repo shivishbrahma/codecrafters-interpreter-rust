@@ -42,8 +42,8 @@ fn main() {
 
             if !file_contents.is_empty() {
                 file_contents.chars().for_each(|c| check_token(c));
-                println!("EOF  null");
             }
+            println!("EOF  null");
         }
         _ => {
             writeln!(io::stderr(), "Unknown command: {}", command).unwrap();
