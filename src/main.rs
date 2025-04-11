@@ -4,6 +4,11 @@ use std::fs;
 use std::io::{self, Write};
 use std::process::ExitCode;
 
+fn is_float(num: f64) -> bool {
+    let int_part = num.trunc();
+    num != int_part
+}
+
 fn lexical_parse(input: String) -> ExitCode {
     let mut token_map = HashMap::new();
     token_map.insert('(', "LEFT_PAREN");
@@ -23,13 +28,28 @@ fn lexical_parse(input: String) -> ExitCode {
     token_map.insert('/', "SLASH");
 
     let mut chars = input.chars().peekable();
-    let mut literal = String::new();
+    let mut lexeme = String::new();
     let mut line_counter: isize = 1;
     let mut has_lexical_error = false;
     let mut is_line_comment = false;
     let mut is_string = false;
+    let mut is_number = false;
+    let mut has_decimal = false;
 
     while let Some(c) = chars.next() {
+        if !c.is_digit(10) && c != '.' && is_number {
+            is_number = false;
+            has_decimal = false;
+            let literal = lexeme.parse::<f64>().unwrap();
+            println!(
+                "NUMBER {} {}{}",
+                lexeme,
+                literal,
+                if is_float(literal) { "" } else { ".0" }
+            );
+            lexeme = String::new();
+        }
+
         if c == '\n' {
             // Checking unterminate string error at new line
             if is_string {
@@ -55,10 +75,10 @@ fn lexical_parse(input: String) -> ExitCode {
         if is_string {
             if c == '"' {
                 is_string = false;
-                println!("STRING \"{}\" {}", literal, literal);
-                literal = String::new();
+                println!("STRING \"{}\" {}", lexeme, lexeme);
+                lexeme = String::new();
             } else {
-                literal.push(c);
+                lexeme.push(c);
             }
             continue;
         }
@@ -66,6 +86,29 @@ fn lexical_parse(input: String) -> ExitCode {
         match c {
             '"' => {
                 is_string = true;
+            }
+            '0'..='9' => {
+                lexeme.push(c);
+                is_number = true;
+            }
+            '.' => {
+                if is_number {
+                    if has_decimal {
+                        eprintln!(
+                            "[line {}] Error: Invalid number literal: {}",
+                            line_counter, lexeme
+                        );
+                        has_lexical_error = true;
+                        lexeme = String::new();
+                        is_number = false;
+                        has_decimal = false;
+                    } else {
+                        lexeme.push(c);
+                        has_decimal = true;
+                    }
+                } else {
+                    println!("{} {} null", token_map.get(&c).unwrap(), c);
+                }
             }
             '\t' | '\r' | ' ' | '\n' => {}
             '=' => {
@@ -134,6 +177,16 @@ fn lexical_parse(input: String) -> ExitCode {
                 }
             }
         }
+    }
+
+    if is_number {
+        let literal = lexeme.parse::<f64>().unwrap();
+        println!(
+            "NUMBER {} {}{}",
+            lexeme,
+            literal,
+            if is_float(literal) { "" } else { ".0" }
+        );
     }
 
     // Checking unterminate string error at EOF
