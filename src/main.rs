@@ -29,13 +29,16 @@ fn lexical_parse(input: String) -> ExitCode {
 
     while let Some(c) = chars.next() {
         if is_line_comment {
+            if c == '\n' {
+                is_line_comment = false;
+                line_counter += 1;
+            }
             continue;
         }
 
         match c {
             '\n' => {
                 line_counter += 1;
-                is_line_comment = false;
             }
             '\t' | '\r' | ' ' => {}
             '=' => {
