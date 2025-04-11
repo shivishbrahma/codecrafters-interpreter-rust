@@ -2,8 +2,9 @@ use std::collections::HashMap;
 use std::env;
 use std::fs;
 use std::io::{self, Write};
+use std::process::ExitCode;
 
-fn lexical_parse(input: String) {
+fn lexical_parse(input: String) -> ExitCode {
     let mut token_map = HashMap::new();
     token_map.insert('(', "LEFT_PAREN");
     token_map.insert(')', "RIGHT_PAREN");
@@ -16,27 +17,38 @@ fn lexical_parse(input: String) {
     token_map.insert('*', "STAR");
     token_map.insert('.', "DOT");
 
-    let mut lexical_output: String = String::new();
+    let mut lexical_out: String = String::new();
+    let mut lexical_errors: String = String::new();
 
     let mut line_counter: i32 = 1;
     input.chars().for_each(|c| {
         if let Some(token) = token_map.get(&c) {
-            lexical_output += &format!("\n{} {} null", token, c);
+            lexical_out += &format!("\n{} {} null", token, c);
         } else if c == '\n' {
             line_counter += 1;
         } else {
-            println!("[line {}] Error: Unexpected character: {}", line_counter, c);
+            lexical_errors += &format!(
+                "\n[line {}] Error: Unexpected character: {}",
+                line_counter, c
+            );
         }
     });
 
-    println!("{}", lexical_output.trim());
+    println!("{}", lexical_errors.trim());
+    println!("{}", lexical_out.trim());
+
+    if lexical_errors.len() > 0 {
+        ExitCode::from(65)
+    } else {
+        ExitCode::SUCCESS
+    }
 }
 
-fn main() {
+fn main() -> ExitCode {
     let args: Vec<String> = env::args().collect();
     if args.len() < 3 {
         writeln!(io::stderr(), "Usage: {} tokenize <filename>", args[0]).unwrap();
-        return;
+        return ExitCode::FAILURE;
     }
 
     let command = &args[1];
@@ -49,14 +61,19 @@ fn main() {
                 String::new()
             });
 
+            let mut s = ExitCode::SUCCESS;
             if !file_contents.is_empty() {
-                lexical_parse(file_contents);
+                s = lexical_parse(file_contents);
+            }
+            if s != ExitCode::SUCCESS {
+                return s;
             }
             println!("EOF  null");
         }
         _ => {
             writeln!(io::stderr(), "Unknown command: {}", command).unwrap();
-            return;
+            return ExitCode::FAILURE;
         }
     }
+    ExitCode::SUCCESS
 }
