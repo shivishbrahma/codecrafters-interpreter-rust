@@ -23,6 +23,8 @@ fn main() {
                 file_contents.chars().for_each(|c| match c {
                     '(' => println!("LEFT_PAREN {} null", c),
                     ')' => println!("RIGHT_PAREN {} null", c),
+                    '{' => println!("LEFT_BRACE {} null", c),
+                    '}' => println!("RIGHT_BRACE {} null", c),
                     _ => (),
                 });
             }
