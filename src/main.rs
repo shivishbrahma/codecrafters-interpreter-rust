@@ -20,12 +20,23 @@ fn lexical_parse(input: String) -> ExitCode {
     token_map.insert('!', "BANG");
     token_map.insert('>', "GREATER");
     token_map.insert('<', "LESS");
+    token_map.insert('/', "SLASH");
 
     let mut line_counter: isize = 1;
-    let mut flag = false;
+    let mut has_lexical_error = false;
+    let mut is_line_comment = false;
     let mut chars = input.chars().peekable();
 
     while let Some(c) = chars.next() {
+        if c == '\n' {
+            line_counter += 1;
+            is_line_comment = false;
+        }
+
+        if is_line_comment {
+            continue;
+        }
+
         match c {
             '=' => {
                 print!("{}", token_map.get(&c).unwrap());
@@ -75,19 +86,26 @@ fn lexical_parse(input: String) -> ExitCode {
                     }
                 }
             }
-            '\n' => line_counter += 1,
+            '/' => match chars.peek() {
+                Some('/') => {
+                    is_line_comment = true;
+                }
+                _ => {
+                    println!("{} {} null", token_map.get(&c).unwrap(), c);
+                }
+            },
             _ => {
                 if let Some(token) = token_map.get(&c) {
                     println!("{} {} null", token, c);
                 } else {
-                    flag = true;
+                    has_lexical_error = true;
                     eprintln!("[line {}] Error: Unexpected character: {}", line_counter, c);
                 }
             }
         }
     }
 
-    if flag {
+    if has_lexical_error {
         ExitCode::from(65)
     } else {
         ExitCode::SUCCESS
