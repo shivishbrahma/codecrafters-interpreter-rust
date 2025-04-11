@@ -3,7 +3,7 @@ use std::env;
 use std::fs;
 use std::io::{self, Write};
 
-fn check_token(ch: char) {
+fn lexical_parse(input: String) {
     let mut token_map = HashMap::new();
     token_map.insert('(', "LEFT_PAREN");
     token_map.insert(')', "RIGHT_PAREN");
@@ -16,11 +16,20 @@ fn check_token(ch: char) {
     token_map.insert('*', "STAR");
     token_map.insert('.', "DOT");
 
-    if let Some(token) = token_map.get(&ch) {
-        println!("{} {} null", token, ch);
-    } else {
-        println!("IDENTIFIER {} null", ch);
-    }
+    let mut lexical_output: String = String::new();
+
+    let mut line_counter: i32 = 1;
+    input.chars().for_each(|c| {
+        if let Some(token) = token_map.get(&c) {
+            lexical_output += &format!("\n{} {} null", token, c);
+        } else if c == '\n' {
+            line_counter += 1;
+        } else {
+            println!("[line {}] Error: Unexpected character: {}", line_counter, c);
+        }
+    });
+
+    println!("{}", lexical_output.trim());
 }
 
 fn main() {
@@ -41,7 +50,7 @@ fn main() {
             });
 
             if !file_contents.is_empty() {
-                file_contents.chars().for_each(|c| check_token(c));
+                lexical_parse(file_contents);
             }
             println!("EOF  null");
         }
