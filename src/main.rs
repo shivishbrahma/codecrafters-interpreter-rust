@@ -34,6 +34,7 @@ fn lexical_parse(input: String) -> ExitCode {
     let mut is_line_comment = false;
     let mut is_string = false;
     let mut is_number = false;
+    let mut is_identifier = false;
     let mut has_decimal = false;
 
     while let Some(c) = chars.next() {
@@ -47,6 +48,12 @@ fn lexical_parse(input: String) -> ExitCode {
                 literal,
                 if is_float(literal) { "" } else { ".0" }
             );
+            lexeme = String::new();
+        }
+
+        if is_identifier && !(c.is_alphanumeric() || c == '_') {
+            is_identifier = false;
+            println!("IDENTIFIER {} null", lexeme);
             lexeme = String::new();
         }
 
@@ -87,9 +94,15 @@ fn lexical_parse(input: String) -> ExitCode {
             '"' => {
                 is_string = true;
             }
+            'a'..='z' | 'A'..='Z' | '_' => {
+                is_identifier = true;
+                lexeme.push(c);
+            }
             '0'..='9' => {
                 lexeme.push(c);
-                is_number = true;
+                if !is_identifier {
+                    is_number = true;
+                }
             }
             '.' => {
                 if is_number {
@@ -187,6 +200,10 @@ fn lexical_parse(input: String) -> ExitCode {
             literal,
             if is_float(literal) { "" } else { ".0" }
         );
+    }
+
+    if is_identifier {
+        println!("IDENTIFIER {} null", lexeme);
     }
 
     // Checking unterminate string error at EOF
