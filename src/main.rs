@@ -9,6 +9,14 @@ fn is_float(num: f64) -> bool {
     num != int_part
 }
 
+fn is_reserved_keyword(keyword: &str) -> bool {
+    let keywords = vec![
+        "and", "class", "else", "false", "for", "fun", "if", "nil", "or", "print", "return",
+        "super", "this", "true", "var", "while",
+    ];
+    return keywords.contains(&keyword);
+}
+
 fn lexical_parse(input: String) -> ExitCode {
     let mut token_map = HashMap::new();
     token_map.insert('(', "LEFT_PAREN");
@@ -53,7 +61,11 @@ fn lexical_parse(input: String) -> ExitCode {
 
         if is_identifier && !(c.is_alphanumeric() || c == '_') {
             is_identifier = false;
-            println!("IDENTIFIER {} null", lexeme);
+            if is_reserved_keyword(&lexeme) {
+                println!("{} {} null", lexeme.to_uppercase(), lexeme);
+            } else {
+                println!("IDENTIFIER {} null", lexeme);
+            }
             lexeme = String::new();
         }
 
@@ -203,7 +215,11 @@ fn lexical_parse(input: String) -> ExitCode {
     }
 
     if is_identifier {
-        println!("IDENTIFIER {} null", lexeme);
+        if is_reserved_keyword(&lexeme) {
+            println!("{} {} null", lexeme.to_uppercase(), lexeme);
+        } else {
+            println!("IDENTIFIER {} null", lexeme);
+        }
     }
 
     // Checking unterminate string error at EOF
