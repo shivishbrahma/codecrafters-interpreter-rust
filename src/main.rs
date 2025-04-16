@@ -4,235 +4,345 @@ use std::fs;
 use std::io::{self, Write};
 use std::process::ExitCode;
 
-fn is_float(num: f64) -> bool {
-    let int_part = num.trunc();
-    num != int_part
+#[derive(Debug, Clone, PartialEq)]
+pub enum TokenType {
+    Identifier(String),
+    Keyword(String),
+    StringLiteral(String),
+    NumberLiteral(f64),
+    Operator(String),
+    Punctuation(char),
+    EOF,
 }
 
-fn is_reserved_keyword(keyword: &str) -> bool {
-    let keywords = vec![
-        "and", "class", "else", "false", "for", "fun", "if", "nil", "or", "print", "return",
-        "super", "this", "true", "var", "while",
-    ];
-    return keywords.contains(&keyword);
+#[derive(Debug, Clone)]
+pub struct Token {
+    _lexeme: String,
+    _type: TokenType,
+    _line: usize,
 }
 
-fn lexical_parse(input: String) -> ExitCode {
-    let mut token_map = HashMap::new();
-    token_map.insert('(', "LEFT_PAREN");
-    token_map.insert(')', "RIGHT_PAREN");
-    token_map.insert('{', "LEFT_BRACE");
-    token_map.insert('}', "RIGHT_BRACE");
-    token_map.insert(',', "COMMA");
-    token_map.insert(';', "SEMICOLON");
-    token_map.insert('+', "PLUS");
-    token_map.insert('-', "MINUS");
-    token_map.insert('*', "STAR");
-    token_map.insert('.', "DOT");
-    token_map.insert('=', "EQUAL");
-    token_map.insert('!', "BANG");
-    token_map.insert('>', "GREATER");
-    token_map.insert('<', "LESS");
-    token_map.insert('/', "SLASH");
+impl Token {
+    pub fn new(_lexeme: String, _type: TokenType, _line: usize) -> Self {
+        Token {
+            _lexeme,
+            _type,
+            _line,
+        }
+    }
+}
 
-    let mut chars = input.chars().peekable();
+fn get_reserved_keyword(keyword: &str) -> Option<&str> {
+    let keywords = HashMap::from([
+        ("and", "AND"),
+        ("class", "CLASS"),
+        ("else", "ELSE"),
+        ("false", "FALSE"),
+        ("for", "FOR"),
+        ("fun", "FUN"),
+        ("if", "IF"),
+        ("nil", "NIL"),
+        ("or", "OR"),
+        ("print", "PRINT"),
+        ("return", "RETURN"),
+        ("super", "SUPER"),
+        ("this", "THIS"),
+        ("true", "TRUE"),
+        ("var", "VAR"),
+        ("while", "WHILE"),
+    ]);
+    return keywords.get(keyword).map(|v| &**v);
+}
+
+fn get_single_char_tokens(keyword: &str) -> Option<&str> {
+    let single_char_tokens = HashMap::from([
+        ("!", "BANG"),
+        ("=", "EQUAL"),
+        ("(", "LEFT_PAREN"),
+        (")", "RIGHT_PAREN"),
+        ("{", "LEFT_BRACE"),
+        ("}", "RIGHT_BRACE"),
+        (",", "COMMA"),
+        (";", "SEMICOLON"),
+        ("+", "PLUS"),
+        ("-", "MINUS"),
+        ("*", "STAR"),
+        (".", "DOT"),
+        ("/", "SLASH"),
+    ]);
+    single_char_tokens.get(keyword).map(|v| &**v)
+}
+
+fn scanner(file_contents: String) -> (bool, Vec<Token>) {
     let mut lexeme = String::new();
-    let mut line_counter: isize = 1;
-    let mut has_lexical_error = false;
-    let mut is_line_comment = false;
-    let mut is_string = false;
-    let mut is_number = false;
-    let mut is_identifier = false;
-    let mut has_decimal = false;
+    let mut line = 1;
+    let mut has_error = false;
+    let mut tokens: Vec<Token> = Vec::new();
 
-    while let Some(c) = chars.next() {
-        if !c.is_digit(10) && c != '.' && is_number {
-            is_number = false;
-            has_decimal = false;
-            let literal = lexeme.parse::<f64>().unwrap();
-            println!(
-                "NUMBER {} {}{}",
-                lexeme,
-                literal,
-                if is_float(literal) { "" } else { ".0" }
-            );
-            lexeme = String::new();
-        }
-
-        if is_identifier && !(c.is_alphanumeric() || c == '_') {
-            is_identifier = false;
-            if is_reserved_keyword(&lexeme) {
-                println!("{} {} null", lexeme.to_uppercase(), lexeme);
-            } else {
-                println!("IDENTIFIER {} null", lexeme);
-            }
-            lexeme = String::new();
-        }
-
-        if c == '\n' {
-            // Checking unterminate string error at new line
-            if is_string {
-                eprintln!("[line {}] Error: Unterminated string.", line_counter);
-                has_lexical_error = true;
-                is_string = false;
-            }
-
-            line_counter += 1;
-            // Skipping till next line
-            if is_line_comment {
-                is_line_comment = false;
-                continue;
-            }
-        }
-
-        // Skipping commented character
-        if is_line_comment {
-            continue;
-        }
-
-        // Handling string literal
-        if is_string {
-            if c == '"' {
-                is_string = false;
-                println!("STRING \"{}\" {}", lexeme, lexeme);
-                lexeme = String::new();
-            } else {
-                lexeme.push(c);
-            }
-            continue;
-        }
-
-        match c {
-            '"' => {
-                is_string = true;
-            }
-            'a'..='z' | 'A'..='Z' | '_' => {
-                is_identifier = true;
-                lexeme.push(c);
-            }
-            '0'..='9' => {
-                lexeme.push(c);
-                if !is_identifier {
-                    is_number = true;
+    if !file_contents.is_empty() {
+        let mut chars = file_contents.chars().peekable();
+        while let Some(c) = chars.next() {
+            match c {
+                ' ' | '\t' | '\r' => continue,
+                '\n' => {
+                    line += 1;
+                    lexeme.clear(); // Clear any potential unterminated lexemes
                 }
-            }
-            '.' => {
-                if is_number {
-                    if has_decimal {
-                        eprintln!(
-                            "[line {}] Error: Invalid number literal: {}",
-                            line_counter, lexeme
-                        );
-                        has_lexical_error = true;
-                        lexeme = String::new();
-                        is_number = false;
-                        has_decimal = false;
+                '"' => {
+                    lexeme.clear();
+                    while let Some(next_char) = chars.next() {
+                        if next_char == '"' {
+                            // println!("STRING \"{}\" {}", lexeme, lexeme);
+                            tokens.push(Token::new(
+                                lexeme.clone(),
+                                TokenType::StringLiteral(lexeme.to_string()),
+                                line,
+                            ));
+                            lexeme.clear();
+                            break;
+                        } else if next_char == '\n' {
+                            eprintln!("[line {}] Error: Unterminated string.", line);
+                            has_error = true;
+                            line += 1;
+                            break;
+                        } else {
+                            lexeme.push(next_char);
+                        }
+
+                        // Check EOF
+                        if chars.peek() == None {
+                            eprintln!("[line {}] Error: Unterminated string.", line);
+                            has_error = true;
+                            break;
+                        }
+                    }
+                }
+                '/' => {
+                    if chars.peek() == Some(&'/') {
+                        chars.next(); // Consume the second '/'
+                        while let Some(next_char) = chars.next() {
+                            if next_char == '\n' {
+                                line += 1;
+                                break;
+                            }
+                        }
                     } else {
-                        lexeme.push(c);
-                        has_decimal = true;
+                        // println!("SLASH / null");
+                        tokens.push(Token::new(
+                            String::from(c),
+                            TokenType::Operator(String::from("SLASH")),
+                            line,
+                        ))
                     }
-                } else {
-                    println!("{} {} null", token_map.get(&c).unwrap(), c);
                 }
-            }
-            '\t' | '\r' | ' ' | '\n' => {}
-            '=' => {
-                print!("{}", token_map.get(&c).unwrap());
-                match chars.peek() {
-                    Some('=') => {
-                        println!("_{} {}{} null", token_map.get(&'=').unwrap(), c, "=");
+                '=' | '!' | '>' | '<' => {
+                    let op = if chars.peek() == Some(&'=') {
                         chars.next();
-                    }
-                    _ => {
-                        println!(" {} null", c);
-                    }
+                        format!("{}{}", c, '=')
+                    } else {
+                        c.to_string()
+                    };
+                    let token_type = match op.as_str() {
+                        "==" => "EQUAL_EQUAL",
+                        "!=" => "BANG_EQUAL",
+                        ">" => "GREATER",
+                        ">=" => "GREATER_EQUAL",
+                        "<" => "LESS",
+                        "<=" => "LESS_EQUAL",
+                        _ => {
+                            if let Some(keyword_type) = get_single_char_tokens(op.as_str()) {
+                                keyword_type
+                            } else {
+                                ""
+                            }
+                        }
+                    };
+                    // println!("{} {} null", token_type, op);
+                    tokens.push(Token::new(
+                        op.clone(),
+                        TokenType::Operator(String::from(token_type)),
+                        line,
+                    ));
                 }
-            }
-            '!' => {
-                print!("{}", token_map.get(&c).unwrap());
-                match chars.peek() {
-                    Some('=') => {
-                        println!("_{} {}{} null", token_map.get(&'=').unwrap(), c, "=");
-                        chars.next();
+                '0'..='9' => {
+                    lexeme.push(c);
+                    while let Some(next_char) = chars.peek() {
+                        if next_char.is_digit(10) || *next_char == '.' {
+                            lexeme.push(chars.next().unwrap());
+                        } else {
+                            break;
+                        }
                     }
-                    _ => {
-                        println!(" {} null", c);
-                    }
+                    let number = lexeme.parse::<f64>().unwrap();
+                    // println!(
+                    //     "NUMBER {} {}{}",
+                    //     lexeme,
+                    //     number,
+                    //     if number.fract() == 0.0 { ".0" } else { "" }
+                    // );
+                    tokens.push(Token::new(
+                        lexeme.clone(),
+                        TokenType::NumberLiteral(number),
+                        line,
+                    ));
+                    lexeme.clear();
                 }
-            }
-            '>' => {
-                print!("{}", token_map.get(&c).unwrap());
-                match chars.peek() {
-                    Some('=') => {
-                        println!("_{} {}{} null", token_map.get(&'=').unwrap(), c, "=");
-                        chars.next();
+                'a'..='z' | 'A'..='Z' | '_' => {
+                    lexeme.push(c);
+                    while let Some(next_char) = chars.peek() {
+                        if next_char.is_alphanumeric() || *next_char == '_' {
+                            lexeme.push(chars.next().unwrap());
+                        } else {
+                            break;
+                        }
                     }
-                    _ => {
-                        println!(" {} null", c);
+                    if let Some(keyword_type) = get_reserved_keyword(&lexeme.as_str()) {
+                        // println!("{} {} null", keyword_type, lexeme);
+                        tokens.push(Token::new(
+                            lexeme.clone(),
+                            TokenType::Keyword(String::from(keyword_type)),
+                            line,
+                        ));
+                    } else {
+                        // println!("IDENTIFIER {} null", lexeme);
+                        tokens.push(Token::new(
+                            lexeme.clone(),
+                            TokenType::Identifier(String::from("IDENTIFIER")),
+                            line,
+                        ));
                     }
-                }
-            }
-            '<' => {
-                print!("{}", token_map.get(&c).unwrap());
-                match chars.peek() {
-                    Some('=') => {
-                        println!("_{} {}{} null", token_map.get(&'=').unwrap(), c, "=");
-                        chars.next();
-                    }
-                    _ => {
-                        println!(" {} null", c);
-                    }
-                }
-            }
-            '/' => match chars.peek() {
-                Some('/') => {
-                    is_line_comment = true;
-                    chars.next();
+                    lexeme.clear();
                 }
                 _ => {
-                    println!("{} {} null", token_map.get(&c).unwrap(), c);
-                }
-            },
-            _ => {
-                if let Some(token) = token_map.get(&c) {
-                    println!("{} {} null", token, c);
-                } else {
-                    has_lexical_error = true;
-                    eprintln!("[line {}] Error: Unexpected character: {}", line_counter, c);
+                    if let Some(token_type) = get_single_char_tokens(c.to_string().as_str()) {
+                        // println!("{} {} null", token_type, c);
+                        tokens.push(Token::new(
+                            String::from(c),
+                            TokenType::Operator(String::from(token_type)),
+                            line,
+                        ));
+                    } else {
+                        eprintln!("[line {}] Error: Unexpected character: {}", line, c);
+                        has_error = true;
+                    }
                 }
             }
         }
     }
+    // println!("EOF  null");
+    (has_error, tokens)
+}
 
-    if is_number {
-        let literal = lexeme.parse::<f64>().unwrap();
-        println!(
-            "NUMBER {} {}{}",
-            lexeme,
-            literal,
-            if is_float(literal) { "" } else { ".0" }
-        );
-    }
+fn tokenize(filename: &str) -> ExitCode {
+    let file_contents = fs::read_to_string(filename).unwrap_or_else(|_| {
+        eprintln!("Failed to read file {}", filename);
+        String::new()
+    });
 
-    if is_identifier {
-        if is_reserved_keyword(&lexeme) {
-            println!("{} {} null", lexeme.to_uppercase(), lexeme);
+    if !file_contents.is_empty() {
+        let (has_error, tokens) = scanner(file_contents);
+        for token in tokens {
+            match token._type {
+                TokenType::NumberLiteral(num) => {
+                    println!(
+                        "{} {} {}{}",
+                        "NUMBER",
+                        token._lexeme,
+                        num,
+                        if num.fract() == 0.0 { ".0" } else { "" }
+                    );
+                }
+                TokenType::StringLiteral(str) => {
+                    println!("{} \"{}\" {}", "STRING", token._lexeme, str)
+                }
+                TokenType::Identifier(_) => {
+                    println!("{} {} null", "IDENTIFIER", token._lexeme)
+                }
+                TokenType::Operator(op) => {
+                    println!("{} {} null", op, token._lexeme)
+                }
+                TokenType::Keyword(keyword) => {
+                    println!("{} {} null", keyword, token._lexeme)
+                }
+                _ => {}
+            }
+        }
+
+        println!("EOF  null");
+        if has_error {
+            return ExitCode::from(65);
         } else {
-            println!("IDENTIFIER {} null", lexeme);
+            return ExitCode::SUCCESS;
         }
     }
+    println!("EOF  null");
 
-    // Checking unterminate string error at EOF
-    if is_string {
-        eprintln!("[line {}] Error: Unterminated string.", line_counter);
-        has_lexical_error = true;
-    }
+    ExitCode::SUCCESS
+}
 
-    if has_lexical_error {
-        ExitCode::from(65)
-    } else {
-        ExitCode::SUCCESS
+fn parse(filename: &str) -> ExitCode {
+    let file_contents = fs::read_to_string(filename).unwrap_or_else(|_| {
+        writeln!(io::stderr(), "Failed to read file {}", filename).unwrap();
+        String::new()
+    });
+
+    let mut operand_stack: Vec<f64> = Vec::new();
+    let mut operator_stack: Vec<String> = Vec::new();
+    if !file_contents.is_empty() {
+        let (_, tokens) = scanner(file_contents);
+        let mut token_iter = tokens.iter().peekable();
+        while let Some(token) = token_iter.next() {
+            match &token._type {
+                TokenType::NumberLiteral(num) => {
+                    operand_stack.push(*num);
+                }
+                TokenType::Operator(_op) => {
+                    if !operator_stack.is_empty() {
+                        let top_op = operator_stack.pop().unwrap();
+                        if top_op == "*" || top_op == "/" || top_op == "-" || top_op == "+" {
+                            let right = operand_stack.pop().unwrap();
+                            let left = operand_stack.pop().unwrap();
+                            println!(
+                                "({} {}{} {}{})",
+                                top_op,
+                                left,
+                                if left.fract() == 0.0 { ".0" } else { "" },
+                                right,
+                                if right.fract() == 0.0 { ".0" } else { "" }
+                            );
+                        }
+                    }
+                    operator_stack.push(token._lexeme.clone());
+                }
+                TokenType::Identifier(_) => {
+                    println!("{}", token._lexeme);
+                }
+                TokenType::Keyword(_) => {
+                    println!("{}", token._lexeme);
+                }
+                TokenType::StringLiteral(_) => todo!(),
+                TokenType::Punctuation(_) => todo!(),
+                TokenType::EOF => todo!(),
+            }
+        }
+
+        if !operator_stack.is_empty() {
+            let top_op = operator_stack.pop().unwrap();
+            if top_op == "*" || top_op == "/" || top_op == "-" || top_op == "+" {
+                let right = operand_stack.pop().unwrap();
+                let left = operand_stack.pop().unwrap();
+                println!(
+                    "({} {}{} {}{})",
+                    top_op,
+                    left,
+                    if left.fract() == 0.0 { ".0" } else { "" },
+                    right,
+                    if right.fract() == 0.0 { ".0" } else { "" }
+                );
+            }
+        }
     }
+    ExitCode::SUCCESS
 }
 
 fn main() -> ExitCode {
@@ -245,26 +355,15 @@ fn main() -> ExitCode {
     let command = &args[1];
     let filename = &args[2];
 
-    match command.as_str() {
-        "tokenize" => {
-            let file_contents = fs::read_to_string(filename).unwrap_or_else(|_| {
-                writeln!(io::stderr(), "Failed to read file {}", filename).unwrap();
-                String::new()
-            });
+    let s;
 
-            let mut s = ExitCode::SUCCESS;
-            if !file_contents.is_empty() {
-                s = lexical_parse(file_contents);
-            }
-            println!("EOF  null");
-            if s != ExitCode::SUCCESS {
-                return s;
-            }
-        }
+    match command.as_str() {
+        "tokenize" => s = tokenize(filename),
+        "parse" => s = parse(&filename),
         _ => {
             writeln!(io::stderr(), "Unknown command: {}", command).unwrap();
             return ExitCode::FAILURE;
         }
     }
-    ExitCode::SUCCESS
+    return s;
 }
