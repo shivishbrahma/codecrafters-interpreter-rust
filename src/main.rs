@@ -341,6 +341,10 @@ fn parse(filename: &str) -> ExitCode {
                 );
             }
         }
+        if !operand_stack.is_empty() {
+            let left = operand_stack.pop().unwrap();
+            println!("{}{}", left, if left.fract() == 0.0 { ".0" } else { "" });
+        }
     }
     ExitCode::SUCCESS
 }
