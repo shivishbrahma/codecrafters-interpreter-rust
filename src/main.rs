@@ -4,7 +4,6 @@ use std::fs;
 use std::io::{self, Write};
 use std::process::ExitCode;
 
-#[derive(Debug, Clone, PartialEq)]
 pub enum TokenType {
     Identifier(String),
     Keyword(String),
@@ -15,7 +14,6 @@ pub enum TokenType {
     EOF,
 }
 
-#[derive(Debug, Clone)]
 pub struct Token {
     _lexeme: String,
     _type: TokenType,
@@ -320,7 +318,9 @@ fn parse(filename: &str) -> ExitCode {
                 TokenType::Keyword(_) => {
                     println!("{}", token._lexeme);
                 }
-                TokenType::StringLiteral(_) => todo!(),
+                TokenType::StringLiteral(_) => {
+                    println!("{}", token._lexeme);
+                },
                 TokenType::Punctuation(_) => todo!(),
                 TokenType::EOF => todo!(),
             }
